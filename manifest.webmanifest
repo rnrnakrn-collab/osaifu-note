@@ -3,8 +3,8 @@
   "short_name": "おさいふ",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f6f5ef",
-  "theme_color": "#f6f5ef",
+  "background_color": "#f8e8d9",
+  "theme_color": "#f8e8d9",
   "lang": "ja",
   "icons": []
 }
