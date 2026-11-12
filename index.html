@@ -17,6 +17,21 @@ input,select{width:100%;border:1px solid var(--line);background:white;border-rad
 label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px}.row{display:flex;gap:8px}.row>*{flex:1}.seg{display:flex;background:#f0f2ee;padding:4px;border-radius:12px;gap:4px}.seg button{flex:1;background:transparent;color:var(--muted);padding:9px}.seg button.on{background:white;color:var(--green);box-shadow:0 1px 4px #0001}
 h2{font-size:17px;margin:4px 0 12px}.entry{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);gap:8px}.entry:last-child{border:0}.entry strong{font-size:14px}.entry small{display:block;color:var(--muted);margin-top:3px}.amount{font-weight:700;white-space:nowrap}.positive{color:var(--green)}.negative{color:var(--red)}
 .bar{height:9px;background:#edf0ec;border-radius:20px;overflow:hidden;margin:7px 0 12px}.bar span{display:block;height:100%;background:#68a58c;border-radius:20px}
+
+.calendar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.calendar-head button{padding:8px 12px}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calendar-weekday{text-align:center;color:var(--muted);font-size:11px;padding:5px 0}
+.daycell{min-height:72px;padding:5px 2px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:3px}
+.daycell.empty{visibility:hidden}
+.daycell.selected{outline:2px solid var(--green);background:var(--pale)}
+.daycell.today{border-color:var(--green)}
+.daycell .daynum{font-size:12px;font-weight:700}
+.daycell .dayincome{font-size:9px;color:var(--green);white-space:nowrap}
+.daycell .dayexpense{font-size:9px;color:var(--red);white-space:nowrap}
+.daycell .daybalance{font-size:9px;color:var(--muted);white-space:nowrap}
+.category-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.category-row input{min-width:0}
 .hidden{display:none!important}.hint{font-size:12px;color:var(--muted);line-height:1.6}.total{font-size:21px;font-weight:750}.pill{font-size:11px;background:var(--pale);color:var(--green);padding:4px 8px;border-radius:20px}
 </style></head>
 <body>
@@ -31,7 +46,7 @@ h2{font-size:17px;margin:4px 0 12px}.entry{display:flex;align-items:center;justi
  <div class="panel"><h2>新しい記録</h2>
  <div class="seg"><button id="kind-exp" class="on" type="button">支出</button><button id="kind-inc" type="button">収入</button></div>
  <label>金額（円）</label><input id="amount" type="number" inputmode="numeric" min="0" placeholder="例：1200">
- <div id="expense-fields">
+ <div id="income-fields" class="hidden"><label>カテゴリー</label><select id="income-category"><option>給与</option><option>賞与</option><option>臨時収入</option><option>その他収入</option></select></div>\n <div id="expense-fields">
   <label>カテゴリー</label><select id="category"><option>食費</option><option>日用品</option><option>美容・服</option><option>交通費</option><option>交際費・趣味</option><option>住居費</option><option>水道光熱費</option><option>通信費</option><option>医療費</option><option>その他</option></select>
   <label>消費税</label><div class="seg" id="taxseg"><button type="button" data-tax="税込" class="on">税込</button><button type="button" data-tax="税抜">税抜</button><button type="button" data-tax="非課税">非課税</button></div>
   <div id="rate-wrap"><label>税率</label><div class="seg" id="rateseg"><button type="button" data-rate="1.1" class="on">10%</button><button type="button" data-rate="1.08">8%</button></div></div>
@@ -45,29 +60,41 @@ h2{font-size:17px;margin:4px 0 12px}.entry{display:flex;align-items:center;justi
  </div>
  <div class="panel"><h2>最近の記録</h2><div id="recent" class="hint">まだ記録がありません。</div></div>
 </section>
+<section id="view-calendar" class="hidden">
+ <div class="panel">
+  <div class="calendar-head"><button class="secondary" id="cal-prev" type="button">‹</button><h2 id="cal-title" style="margin:0">2026年11月</h2><button class="secondary" id="cal-next" type="button">›</button></div>
+  <div class="calendar-grid" id="calendar-grid"></div>
+  <p class="hint">日付をタップすると、その日の収支入力画面に移動します。緑は収入、赤は支出、下段は差引です。</p>
+ </div>
+ <div class="panel"><h2 id="selected-day-title">選択した日の収支</h2><div class="stats"><div class="stat"><small>収入</small><strong class="positive" id="day-income">¥0</strong></div><div class="stat"><small>支出</small><strong id="day-expense">¥0</strong></div></div><div class="between" style="margin-top:12px"><small class="muted">差引</small><b id="day-balance">¥0</b></div><div id="day-records" class="hint" style="margin-top:10px">記録はありません。</div></div>
+ <button id="add-on-day" style="width:100%;margin:0 0 10px">この日の収支を入力する</button>
+</section>
 <section id="view-summary" class="hidden">
  <div class="panel"><h2>カテゴリー別支出</h2><div id="categories" class="hint">支出を登録すると集計されます。</div></div>
  <div class="panel"><h2>カード利用額・引き落とし予定</h2><div id="card-summary"></div></div>
  <div class="panel"><h2>今月の予算</h2><label>予算（円）</label><input id="budget" type="number" inputmode="numeric" placeholder="例：150000"><div class="between" style="margin-top:10px"><small class="muted">予算残額</small><b id="remaining">¥0</b></div><div class="bar"><span id="budgetbar" style="width:0%"></span></div></div>
 </section>
 <section id="view-manage" class="hidden">
+ <div class="panel"><h2>カテゴリー管理</h2><p class="hint">支出・収入それぞれのカテゴリーを追加できます。削除しても過去の記録の表示は残ります。</p><label>追加する種類</label><select id="new-cat-kind"><option value="支出">支出カテゴリー</option><option value="収入">収入カテゴリー</option></select><div class="category-row"><input id="new-category" placeholder="例：お弁当、牛乳、洗剤"><button id="add-category" type="button">追加</button></div><div id="category-list"></div></div>
  <div class="panel"><h2>固定費・サブスク</h2><label>項目名</label><input id="fixed-name" placeholder="例：家賃、動画配信"><label>月額（円）</label><input id="fixed-amount" type="number" inputmode="numeric" placeholder="例：8000"><button id="add-fixed" style="width:100%;margin-top:10px">固定費を追加</button><div id="fixed-list" style="margin-top:10px"></div></div>
  <div class="panel"><h2>データのバックアップ</h2><p class="hint">記録・予算・固定費をJSONファイルに保存できます。機種変更時は新しい端末でこのファイルを読み込んでください。iCloud Driveなどに保管すると便利です。</p><button id="export" style="width:100%">バックアップを書き出す</button><label>バックアップから復元</label><input id="import-file" type="file" accept="application/json,.json"><p class="hint">復元すると現在のデータはバックアップの内容に置き換わります。</p></div>
  <div class="panel"><h2>このアプリについて</h2><p class="hint">データはこのブラウザ内に保存されます。ブラウザの履歴・Webサイトデータを消去するとデータが失われる場合があります。定期的にバックアップしてください。銀行・カード口座との自動連携はありません。</p></div>
 </section>
 </main>
-<nav><button data-view="input" class="active">✚<br>入力</button><button data-view="summary">▥<br>集計</button><button data-view="manage">⚙<br>管理</button></nav>
+<nav><button data-view="input" class="active">✚<br>入力</button><button data-view="calendar">▦<br>カレンダー</button><button data-view="summary">▥<br>集計</button><button data-view="manage">⚙<br>管理</button></nav>
 <script>
 const $=id=>document.getElementById(id), yen=n=>'¥'+Math.round(n||0).toLocaleString('ja-JP');
 const today=new Date(), iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-let state={entries:[],fixed:[],budget:150000},kind='支出',tax='税込',rate=1.1;
+const defaultExpenseCats=['食費','日用品','美容・服','交通費','交際費・趣味','住居費','水道光熱費','通信費','医療費','その他'];
+const defaultIncomeCats=['給与','賞与','臨時収入','その他収入'];
+let state={entries:[],fixed:[],budget:150000,categories:{支出:defaultExpenseCats,収入:defaultIncomeCats}},kind='支出',tax='税込',rate=1.1,calMonth=iso(today).slice(0,7),selectedDay=iso(today);
 const key='osaifu-note-v1';
-function load(){try{const x=JSON.parse(localStorage.getItem(key)||'{}');state={...state,...x}}catch(e){}}
+function load(){try{const x=JSON.parse(localStorage.getItem(key)||'{}');state={...state,...x};state.categories={支出:[...new Set([...(x.categories?.支出||defaultExpenseCats)])],収入:[...new Set([...(x.categories?.収入||defaultIncomeCats)])]}}catch(e){}}
 function persist(){localStorage.setItem(key,JSON.stringify(state));render()}
 function month(){return $('month').value}
 function dueDefault(date){let d=new Date(date+'T12:00:00');d.setMonth(d.getMonth()+1);d.setDate(27);return iso(d)}
 function amountValue(){let n=Math.max(0,Number($('amount').value)||0);return Math.round(tax==='税抜'?n*rate:n)}
-function setKind(k){kind=k;$('kind-exp').classList.toggle('on',k==='支出');$('kind-inc').classList.toggle('on',k==='収入');$('expense-fields').classList.toggle('hidden',k!=='支出');taxPreview()}
+function setKind(k){kind=k;$('kind-exp').classList.toggle('on',k==='支出');$('kind-inc').classList.toggle('on',k==='収入');$('expense-fields').classList.toggle('hidden',k!=='支出');$('income-fields').classList.toggle('hidden',k!=='収入');taxPreview()}
 function taxPreview(){let n=Math.max(0,Number($('amount').value)||0),v=amountValue();$('tax-result').textContent=yen(v);$('rate-wrap').classList.toggle('hidden',tax==='非課税');$('tax-note').textContent=tax==='税抜'?`税抜 ${yen(n)} + 税相当 ${yen(v-n)} を記録します。`:tax==='税込'?'入力した税込金額をそのまま記録します。':'税金を加算せず、そのまま記録します。'}
 function render(){
  let m=month(),es=state.entries.filter(e=>e.date.startsWith(m)),inc=es.filter(e=>e.kind==='収入').reduce((a,e)=>a+e.amount,0),exp=es.filter(e=>e.kind==='支出').reduce((a,e)=>a+e.amount,0);
@@ -80,17 +107,55 @@ function render(){
  let budget=Number(state.budget)||0,remain=budget-exp;$('budget').value=state.budget;$('remaining').textContent=yen(remain);$('remaining').className=remain>=0?'positive':'negative';$('budgetbar').style.width=Math.min(100,exp/Math.max(1,budget)*100)+'%';
  $('fixed-list').innerHTML=state.fixed.length?state.fixed.map(f=>`<div class="entry"><b>${esc(f.name)}</b><span>${yen(f.amount)}/月</span><button class="danger" data-fixed-del="${f.id}" style="padding:7px 9px">削除</button></div>`).join(''):'固定費はまだありません。';
 }
+
+function syncCategorySelects(){
+ const expense=$('category'),income=$('income-category');
+ const oldE=expense.value,oldI=income.value;
+ expense.innerHTML=(state.categories.支出||defaultExpenseCats).map(c=>`<option>${esc(c)}</option>`).join('');
+ income.innerHTML=(state.categories.収入||defaultIncomeCats).map(c=>`<option>${esc(c)}</option>`).join('');
+ if([...expense.options].some(o=>o.value===oldE))expense.value=oldE;
+ if([...income.options].some(o=>o.value===oldI))income.value=oldI;
+}
+function renderCategoryList(){
+ $('category-list').innerHTML=['支出','収入'].map(k=>`<div style="margin-top:12px"><b>${k}カテゴリー</b>${(state.categories[k]||[]).map((c,i)=>`<div class="entry"><span>${esc(c)}</span><button class="danger" style="padding:7px 9px" data-cat-del="${k}|${i}">削除</button></div>`).join('')}</div>`).join('');
+}
+function renderCalendar(){
+ const [y,m]=calMonth.split('-').map(Number),first=new Date(y,m-1,1),last=new Date(y,m,0).getDate();
+ $('cal-title').textContent=`${y}年${m}月`;
+ const cells=['日','月','火','水','木','金','土'].map(d=>`<div class="calendar-weekday">${d}</div>`);
+ for(let i=0;i<first.getDay();i++)cells.push('<div class="daycell empty"></div>');
+ for(let d=1;d<=last;d++){
+  const date=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const es=state.entries.filter(e=>e.date===date),inc=es.filter(e=>e.kind==='収入').reduce((a,e)=>a+e.amount,0),exp=es.filter(e=>e.kind==='支出').reduce((a,e)=>a+e.amount,0),net=inc-exp;
+  cells.push(`<button type="button" class="daycell ${date===selectedDay?'selected':''} ${date===iso(today)?'today':''}" data-day="${date}"><span class="daynum">${d}</span>${inc?`<span class="dayincome">+${compact(inc)}</span>`:''}${exp?`<span class="dayexpense">−${compact(exp)}</span>`:''}${(inc||exp)?`<span class="daybalance">${net>=0?'+':'−'}${compact(Math.abs(net))}</span>`:''}</button>`);
+ }
+ $('calendar-grid').innerHTML=cells.join('');
+ const dayEntries=state.entries.filter(e=>e.date===selectedDay).sort((a,b)=>b.id-a.id);
+ const inc=dayEntries.filter(e=>e.kind==='収入').reduce((a,e)=>a+e.amount,0),exp=dayEntries.filter(e=>e.kind==='支出').reduce((a,e)=>a+e.amount,0);
+ $('selected-day-title').textContent=`${selectedDay} の収支`;$('day-income').textContent=yen(inc);$('day-expense').textContent=yen(exp);$('day-balance').textContent=yen(inc-exp);$('day-balance').className=inc-exp>=0?'positive':'negative';
+ $('day-records').innerHTML=dayEntries.length?dayEntries.map(e=>`<div class="entry"><div><b>${esc(e.category)}</b><small>${esc(e.memo||e.payment||'')}</small></div><span class="amount ${e.kind==='収入'?'positive':'negative'}">${e.kind==='収入'?'+':'−'}${yen(e.amount)}</span></div>`).join(''):'この日の記録はありません。';
+}
+function compact(n){return n>=10000?(n/10000).toFixed(1).replace(/\.0$/,'')+'万':Math.round(n).toLocaleString('ja-JP')}
+function showView(v){document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===v));['input','calendar','summary','manage'].forEach(x=>$('view-'+x).classList.toggle('hidden',x!==v))}
+
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 $('kind-exp').onclick=()=>setKind('支出');$('kind-inc').onclick=()=>setKind('収入');$('amount').oninput=taxPreview;
 $('taxseg').onclick=e=>{let b=e.target.closest('button[data-tax]');if(!b)return;tax=b.dataset.tax;[...$('taxseg').children].forEach(x=>x.classList.toggle('on',x===b));taxPreview()};
 $('rateseg').onclick=e=>{let b=e.target.closest('button[data-rate]');if(!b)return;rate=Number(b.dataset.rate);[...$('rateseg').children].forEach(x=>x.classList.toggle('on',x===b));taxPreview()};
 $('payment').onchange=()=>{$('due-wrap').classList.toggle('hidden',$('payment').value!=='楽天カード')};
 $('entry-date').value=iso(today);$('month').value=iso(today).slice(0,7);$('due-date').value=dueDefault(iso(today));
-$('entry-date').onchange=()=>{if($('payment').value==='楽天カード')$('due-date').value=dueDefault($('entry-date').value)};
+$('entry-date').onchange=()=>{selectedDay=$('entry-date').value;calMonth=selectedDay.slice(0,7);if($('payment').value==='楽天カード')$('due-date').value=dueDefault($('entry-date').value);renderCalendar()};
 $('payment').onchange();
-$('save').onclick=()=>{let n=Number($('amount').value);if(!n||n<0){alert('金額を入力してください');return}let date=$('entry-date').value||iso(today),payment=$('payment').value;let entry={id:Date.now(),kind,amount:kind==='収入'?Math.round(n):amountValue(),category:kind==='収入'?'収入':$('category').value,payment,memo:$('memo').value,date,tax:kind==='支出'?tax:'',rate:kind==='支出'?rate:null,dueDate:kind==='支出'&&payment==='楽天カード'?($('due-date').value||dueDefault(date)):''};state.entries.push(entry);persist();$('amount').value='';$('memo').value='';taxPreview();};
+$('save').onclick=()=>{let n=Number($('amount').value);if(!n||n<0){alert('金額を入力してください');return}let date=$('entry-date').value||iso(today),payment=$('payment').value;let entry={id:Date.now(),kind,amount:kind==='収入'?Math.round(n):amountValue(),category:kind==='収入'?$('income-category').value:$('category').value,payment,memo:$('memo').value,date,tax:kind==='支出'?tax:'',rate:kind==='支出'?rate:null,dueDate:kind==='支出'&&payment==='楽天カード'?($('due-date').value||dueDefault(date)):''};state.entries.push(entry);selectedDay=date;calMonth=date.slice(0,7);persist();$('amount').value='';$('memo').value='';taxPreview();};
 $('month').onchange=render;
-document.querySelector('nav').onclick=e=>{let b=e.target.closest('button[data-view]');if(!b)return;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));['input','summary','manage'].forEach(v=>$('view-'+v).classList.toggle('hidden',v!==b.dataset.view));};
+document.querySelector('nav').onclick=e=>{let b=e.target.closest('button[data-view]');if(!b)return;showView(b.dataset.view)};
+$('calendar-grid').onclick=e=>{let b=e.target.closest('[data-day]');if(!b)return;selectedDay=b.dataset.day;$('entry-date').value=selectedDay;$('month').value=selectedDay.slice(0,7);calMonth=selectedDay.slice(0,7);render();showView('input')};
+$('cal-prev').onclick=()=>{let d=new Date(calMonth+'-01T12:00:00');d.setMonth(d.getMonth()-1);calMonth=iso(d).slice(0,7);renderCalendar()};
+$('cal-next').onclick=()=>{let d=new Date(calMonth+'-01T12:00:00');d.setMonth(d.getMonth()+1);calMonth=iso(d).slice(0,7);renderCalendar()};
+$('add-on-day').onclick=()=>{$('entry-date').value=selectedDay;$('month').value=selectedDay.slice(0,7);showView('input')};
+$('add-category').onclick=()=>{let k=$('new-cat-kind').value,c=$('new-category').value.trim();if(!c)return alert('カテゴリー名を入力してね');if(state.categories[k].includes(c))return alert('同じカテゴリーがあるよ');state.categories[k].push(c);$('new-category').value='';persist()};
+$('category-list').onclick=e=>{let b=e.target.closest('[data-cat-del]');if(!b)return;let [k,i]=b.dataset.catDel.split('|');if(!confirm(`「${state.categories[k][Number(i)]}」をカテゴリー一覧から削除する？過去の記録は残るよ。`))return;state.categories[k].splice(Number(i),1);persist()};
+
 $('recent').onclick=e=>{let b=e.target.closest('[data-del]');if(b&&confirm('この記録を削除しますか？')){state.entries=state.entries.filter(x=>x.id!==Number(b.dataset.del));persist()}};
 $('budget').onchange=()=>{state.budget=Number($('budget').value)||0;persist()};
 $('add-fixed').onclick=()=>{let name=$('fixed-name').value.trim(),amount=Number($('fixed-amount').value);if(!name||amount<=0)return alert('項目名と金額を入力してください');state.fixed.push({id:Date.now(),name,amount});$('fixed-name').value='';$('fixed-amount').value='';persist()};
